@@ -64,6 +64,9 @@ kalori-app/
 │   ├── index.js
 │   └── wrangler.toml
 ├── firebase.json            # konfigurasi Firebase Hosting
+├── firestore.rules          # aturan data + allowlist
+├── storage.rules            # aturan Storage (opsional)
+├── SECURITY.md              # kebijakan pelaporan kerentanan
 ├── package.json
 └── README.md
 ```
