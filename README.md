@@ -17,7 +17,8 @@ Semua komponen bisa dijalankan **gratis**:
 - Aplikasi: <https://kalorisehat-49166.web.app>
 - Firebase project: `kalorisehat-49166`
 - Firestore: database default di `asia-southeast2` (Jakarta), rules sudah aktif
-- Auth: Email/Password + Google aktif
+- Auth: Email/Password + Google aktif; pendaftaran via allowlist undangan
+- Repositori: <https://github.com/fitrinuryatinningrum/kalorisehat>
 - Cloudflare Worker: <https://kalorisehat-ai.kalorisehat-49166.workers.dev>
 - AI: Cloudflare Workers AI aktif (tanpa API key); Gemini opsional
 - FCM: VAPID key sudah diisi, Worker cron berjalan, push latar belakang sudah diuji end-to-end
