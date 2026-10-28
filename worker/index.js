@@ -124,11 +124,6 @@ async function handleAiRequest(request, env) {
   }
   const safeMimeType = allowedMimeTypes.has(mimeType) ? mimeType : "image/jpeg";
 
-  const access = await authorizeAi(env, auth.user?.localId);
-  if (!access.ok) {
-    return json({ error: access.error }, access.status, cors);
-  }
-
   const attempts = [];
   if (env.GEMINI_API_KEY) {
     attempts.push(() => callGemini(env, imageBase64, safeMimeType));
@@ -143,6 +138,11 @@ async function handleAiRequest(request, env) {
       500,
       cors
     );
+  }
+
+  const access = await authorizeAi(env, auth.user?.localId);
+  if (!access.ok) {
+    return json({ error: access.error }, access.status, cors);
   }
 
   let lastError = "AI tidak mengembalikan hasil.";
