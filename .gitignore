@@ -1,0 +1,12 @@
+node_modules/
+.wrangler/
+.firebase/
+*.log
+.DS_Store
+.env
+.env.*
+.dev.vars
+.dev.vars.*
+# Jangan pernah commit service account Firebase.
+*serviceAccount*.json
+firebase-adminsdk-*.json

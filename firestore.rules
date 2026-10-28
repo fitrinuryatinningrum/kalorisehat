@@ -1,0 +1,129 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isAllowed() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/allowlist/$(request.auth.uid));
+    }
+
+    function isOwner(userId) {
+      return isAllowed() && request.auth.uid == userId;
+    }
+
+    function isString(value, maxLength) {
+      return value is string && value.size() <= maxLength;
+    }
+
+    function isNumberInRange(value, minValue, maxValue) {
+      return value is number && value >= minValue && value <= maxValue;
+    }
+
+    function isInteger(value) {
+      return value is int;
+    }
+
+    function isDate(value) {
+      return isString(value, 10) && value.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+    }
+
+    function isTime(value) {
+      return isString(value, 5) && value.matches('^[0-9]{2}:[0-9]{2}$');
+    }
+
+    function validUser(data) {
+      return data.keys().hasOnly([
+          'nama', 'berat', 'tinggi', 'umur', 'gender', 'target',
+          'email', 'created_at', 'schedules', 'fcmTokens',
+          'timezone', 'fcm_updated_at', 'ai_date', 'ai_count'
+        ])
+        && (!data.keys().hasAny(['nama']) || isString(data.nama, 40))
+        && (!data.keys().hasAny(['berat']) || isNumberInRange(data.berat, 25, 300))
+        && (!data.keys().hasAny(['tinggi']) || isNumberInRange(data.tinggi, 100, 250))
+        && (!data.keys().hasAny(['umur']) || isNumberInRange(data.umur, 10, 100))
+        && (!data.keys().hasAny(['gender']) || data.gender in ['pria', 'wanita'])
+        && (!data.keys().hasAny(['target']) || isNumberInRange(data.target, 800, 6000))
+        && (!data.keys().hasAny(['email']) || isString(data.email, 254))
+        && (!data.keys().hasAny(['created_at']) || (isInteger(data.created_at) && data.created_at > 0))
+        && (!data.keys().hasAny(['schedules']) || (data.schedules is list && data.schedules.size() <= 30))
+        && (!data.keys().hasAny(['fcmTokens']) || (data.fcmTokens is list && data.fcmTokens.size() <= 10))
+        && (!data.keys().hasAny(['timezone']) || isString(data.timezone, 80))
+        && (!data.keys().hasAny(['fcm_updated_at']) || (isInteger(data.fcm_updated_at) && data.fcm_updated_at > 0))
+        && (!data.keys().hasAny(['ai_date']) || isDate(data.ai_date))
+        && (!data.keys().hasAny(['ai_count']) || (isInteger(data.ai_count) && data.ai_count >= 0 && data.ai_count <= 10000));
+    }
+
+    function validUserCreate(data) {
+      return validUser(data) && !data.keys().hasAny(['ai_date', 'ai_count']);
+    }
+
+    function validFood(data) {
+      return data.keys().hasOnly([
+          'nama', 'porsi', 'kalori', 'protein', 'karbohidrat',
+          'lemak', 'foto', 'date', 'created_at'
+        ])
+        && isString(data.nama, 120) && data.nama.size() > 0
+        && isNumberInRange(data.porsi, 0, 10000)
+        && isNumberInRange(data.kalori, 0, 20000)
+        && isNumberInRange(data.protein, 0, 2000)
+        && isNumberInRange(data.karbohidrat, 0, 2000)
+        && isNumberInRange(data.lemak, 0, 2000)
+        && isString(data.foto, 900000)
+        && isDate(data.date)
+        && isInteger(data.created_at) && data.created_at > 0;
+    }
+
+    function validActivity(data) {
+      return data.keys().hasOnly([
+          'jenis', 'met', 'durasi', 'kalori_terbakar', 'date', 'created_at'
+        ])
+        && isString(data.jenis, 80) && data.jenis.size() > 0
+        && isNumberInRange(data.met, 0, 50)
+        && isNumberInRange(data.durasi, 1, 600)
+        && isNumberInRange(data.kalori_terbakar, 0, 20000)
+        && isDate(data.date)
+        && isInteger(data.created_at) && data.created_at > 0;
+    }
+
+    function validHealth(data) {
+      return data.keys().hasOnly(['air_ml', 'berat', 'tidur', 'bangun'])
+        && (!data.keys().hasAny(['air_ml']) || isNumberInRange(data.air_ml, 0, 50000))
+        && (!data.keys().hasAny(['berat']) || isNumberInRange(data.berat, 25, 300))
+        && (!data.keys().hasAny(['tidur']) || isTime(data.tidur))
+        && (!data.keys().hasAny(['bangun']) || isTime(data.bangun));
+    }
+
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId) && validUserCreate(request.resource.data);
+      allow update: if isOwner(userId)
+        && validUser(request.resource.data)
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['ai_date', 'ai_count']);
+      allow delete: if isOwner(userId);
+
+      match /foods/{foodId} {
+        allow read, delete: if isOwner(userId);
+        allow create, update: if isOwner(userId) && validFood(request.resource.data);
+      }
+
+      match /activities/{activityId} {
+        allow read, delete: if isOwner(userId);
+        allow create, update: if isOwner(userId) && validActivity(request.resource.data);
+      }
+
+      match /health/{healthId} {
+        allow read, delete: if isOwner(userId);
+        allow create, update: if isOwner(userId) && isDate(healthId) && validHealth(request.resource.data);
+      }
+
+      match /{document=**} {
+        allow read, write: if false;
+      }
+    }
+
+    // Daftar undangan. Hanya Admin SDK / Worker yang boleh mengelola.
+    // Klien tidak bisa membaca atau menulis allowlist.
+    match /allowlist/{userId} {
+      allow read, write: if false;
+    }
+  }
+}

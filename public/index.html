@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0f9d76">
+  <meta name="description" content="KaloriSehat — pantau kalori masuk dan keluar, kesehatan harian, serta jadwal pengingat dengan bantuan AI.">
+  <title>KaloriSehat — Monitoring Kalori Harian</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <link rel="stylesheet" href="css/style.css?v=10">
+</head>
+<body>
+
+  <!-- ===== Layar Login (hanya mode Firebase) ===== -->
+  <div id="auth-screen" class="auth-screen hidden">
+    <div class="auth-card">
+      <div class="auth-brand">
+        <span class="brand-mark big">🥗</span>
+        <h1>KaloriSehat</h1>
+        <p class="muted">Masuk dengan akun yang sudah diizinkan.</p>
+      </div>
+      <form id="auth-form" class="stack">
+        <label>Email
+          <input id="auth-email" type="email" autocomplete="email" placeholder="nama@email.com" required>
+        </label>
+        <label>Password
+          <input id="auth-password" type="password" autocomplete="current-password" placeholder="Minimal 6 karakter" minlength="6" required>
+        </label>
+        <div class="row gap">
+          <button class="btn primary grow" type="submit">Masuk</button>
+          <button class="btn ghost grow" type="button" id="btn-register">Via undangan</button>
+        </div>
+      </form>
+      <button class="btn outline wide" id="btn-google" type="button">Masuk dengan Google</button>
+      <p id="auth-message" class="muted center"></p>
+    </div>
+  </div>
+
+  <!-- ===== Aplikasi ===== -->
+  <div id="app-shell" class="app-shell">
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark">🥗</span>
+        <div>
+          <h1>KaloriSehat</h1>
+          <p id="mode-badge" class="mode-badge">Memuat…</p>
+        </div>
+      </div>
+      <label class="date-picker">
+        <span>Tanggal</span>
+        <input type="date" id="date-input">
+      </label>
+    </header>
+
+    <main id="main">
+
+      <!-- ===== Dashboard ===== -->
+      <section id="screen-dashboard" class="screen active">
+        <div class="hero-card" id="hero-card">
+          <div class="ring-wrap">
+            <svg viewBox="0 0 120 120" class="ring" aria-hidden="true">
+              <circle cx="60" cy="60" r="52" class="ring-track"/>
+              <circle cx="60" cy="60" r="52" class="ring-fill" id="calorie-ring"/>
+            </svg>
+            <div class="ring-center">
+              <strong id="remaining-cal">0</strong>
+              <span>kkal tersisa</span>
+              <span class="ring-balance" id="energy-balance">Saldo energi: 0 kkal</span>
+            </div>
+          </div>
+          <div class="hero-stats">
+            <div><span>Masuk</span><strong id="total-in">0</strong></div>
+            <div><span>Keluar</span><strong id="total-out">0</strong></div>
+            <div><span>Target</span><strong id="total-target">0</strong></div>
+          </div>
+          <div class="macro-row">
+            <div class="macro">
+              <div class="macro-head"><span>Protein</span><span id="macro-protein-val">0/0 g</span></div>
+              <div class="bar"><i id="macro-protein-bar"></i></div>
+            </div>
+            <div class="macro">
+              <div class="macro-head"><span>Karbohidrat</span><span id="macro-carb-val">0/0 g</span></div>
+              <div class="bar"><i id="macro-carb-bar"></i></div>
+            </div>
+            <div class="macro">
+              <div class="macro-head"><span>Lemak</span><span id="macro-fat-val">0/0 g</span></div>
+              <div class="bar"><i id="macro-fat-bar"></i></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card redeem-card" id="redeem-card">
+          <div class="card-head">
+            <h2>Tebus Dosa</h2>
+            <span class="pill ok" id="redeem-pill">Aman</span>
+          </div>
+          <div class="redeem-stats">
+            <div><span>Kelebihan</span><strong id="redeem-over">0 kkal</strong></div>
+            <div><span>Tertebus</span><strong id="redeem-paid">0 kkal</strong></div>
+            <div><span>Sisa dosa</span><strong id="redeem-left">0 kkal</strong></div>
+          </div>
+          <div class="redeem-bar"><div id="redeem-fill"></div></div>
+          <p class="hint" id="redeem-note">Kalori keluar dipakai untuk menutup kelebihan kalori harian.</p>
+        </div>
+
+        <div class="quick-grid">
+          <button class="quick-card" data-goto="food"><span>📷</span>Catat Makanan</button>
+          <button class="quick-card" data-goto="activity"><span>🏃</span>Catat Olahraga</button>
+          <button class="quick-card" data-goto="schedule"><span>⏰</span>Jadwal</button>
+          <button class="quick-card" id="quick-water"><span>💧</span>Tambah 250 ml</button>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h2>Kesehatan Hari Ini</h2>
+            <span class="muted small" id="health-date-label"></span>
+          </div>
+          <div class="health-grid">
+            <div class="health-item">
+              <span class="health-icon">💧</span>
+              <div class="health-main">
+                <p>Air minum</p>
+                <strong id="health-water">0 ml</strong>
+              </div>
+              <div class="water-actions">
+                <button class="chip" data-water="250">+250</button>
+                <button class="chip" data-water="500">+500</button>
+              </div>
+            </div>
+            <div class="health-item">
+              <span class="health-icon">⚖️</span>
+              <div class="health-main">
+                <p>Berat badan</p>
+                <strong id="health-weight">- kg</strong>
+              </div>
+              <button class="chip" id="btn-weight">Ubah</button>
+            </div>
+            <div class="health-item">
+              <span class="health-icon">😴</span>
+              <div class="health-main">
+                <p>Tidur</p>
+                <strong id="health-sleep">- jam</strong>
+              </div>
+              <button class="chip" id="btn-sleep">Ubah</button>
+            </div>
+          </div>
+          <div class="water-bar"><div id="water-fill"></div></div>
+          <p class="hint" id="water-note">Target air: 2.000 ml</p>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h2>Jadwal Hari Ini</h2>
+            <button class="link-btn" data-goto="schedule">Kelola</button>
+          </div>
+          <ul id="dashboard-schedule-list" class="schedule-list"></ul>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h2>Makanan Tercatat</h2>
+            <button class="link-btn" data-goto="food">Tambah</button>
+          </div>
+          <ul id="dashboard-food-list" class="log-list"></ul>
+        </div>
+      </section>
+
+      <!-- ===== Makanan ===== -->
+      <section id="screen-food" class="screen">
+        <div class="card">
+          <div class="card-head">
+            <h2>Analisis Makanan dengan AI</h2>
+            <span class="pill" id="ai-status-pill">Demo</span>
+          </div>
+          <p class="muted">Foto makanan, lalu AI memperkirakan kalori dan gizinya. Kamu tetap bisa mengoreksi sebelum menyimpan.</p>
+          <div class="photo-drop" id="photo-drop">
+            <input type="file" id="photo-input" accept="image/*" capture="environment" hidden>
+            <img id="photo-preview" class="photo-preview hidden" alt="Pratinjau makanan">
+            <div id="photo-placeholder" class="photo-placeholder">
+              <span>📷</span>
+              <p>Ketuk untuk ambil / pilih foto</p>
+            </div>
+          </div>
+          <div class="row gap">
+            <button class="btn primary grow" id="btn-analyze" disabled>Analisis dengan AI</button>
+            <button class="btn ghost" id="btn-clear-photo" disabled>Reset</button>
+          </div>
+          <p id="analyze-status" class="hint"></p>
+        </div>
+
+        <form id="food-form" class="card">
+          <div class="card-head">
+            <h2>Detail Makanan</h2>
+            <span class="muted small" id="food-form-mode">Manual</span>
+          </div>
+          <label>Nama makanan
+            <input id="food-name" placeholder="cth: Nasi goreng" maxlength="80" required>
+          </label>
+          <div class="form-grid">
+            <label>Porsi (gram)
+              <input id="food-portion" type="number" min="0" step="1" placeholder="300">
+            </label>
+            <label>Kalori (kkal)
+              <input id="food-cal" type="number" min="0" step="1" placeholder="650" required>
+            </label>
+            <label>Protein (g)
+              <input id="food-protein" type="number" min="0" step="0.1" placeholder="18">
+            </label>
+            <label>Karbohidrat (g)
+              <input id="food-carb" type="number" min="0" step="0.1" placeholder="75">
+            </label>
+            <label>Lemak (g)
+              <input id="food-fat" type="number" min="0" step="0.1" placeholder="28">
+            </label>
+          </div>
+          <button class="btn primary wide" type="submit">Simpan Makanan</button>
+        </form>
+
+        <div class="card">
+          <div class="card-head">
+            <h2>Makanan Tercatat</h2>
+            <strong class="pill" id="food-day-total">0 kkal</strong>
+          </div>
+          <ul id="food-list" class="log-list"></ul>
+        </div>
+      </section>
+
+      <!-- ===== Aktivitas ===== -->
+      <section id="screen-activity" class="screen">
+        <form id="activity-form" class="card">
+          <div class="card-head">
+            <h2>Catat Olahraga</h2>
+            <span class="pill" id="activity-preview">0 kkal</span>
+          </div>
+          <label>Jenis aktivitas
+            <select id="activity-type"></select>
+          </label>
+          <label>Durasi (menit)
+            <input id="activity-duration" type="number" min="1" max="600" step="1" value="30" required>
+          </label>
+          <p class="hint">Estimasi memakai rumus MET dan berat badanmu (<span id="activity-weight">-</span> kg). Kalori keluar hanya untuk pemantauan, tidak menambah sisa kalori harian.</p>
+          <button class="btn primary wide" type="submit">Simpan Aktivitas</button>
+        </form>
+
+        <div class="card">
+          <div class="card-head">
+            <h2>Aktivitas Tercatat</h2>
+            <strong class="pill" id="activity-day-total">0 kkal</strong>
+          </div>
+          <ul id="activity-list" class="log-list"></ul>
+        </div>
+      </section>
+
+      <!-- ===== Jadwal ===== -->
+      <section id="screen-schedule" class="screen">
+        <div class="card">
+          <div class="card-head">
+            <h2>Pengingat Harian</h2>
+            <span class="pill" id="notif-pill">Belum aktif</span>
+          </div>
+          <p class="muted">Tandai jadwal harianmu. Pengingat muncul saat aplikasi terbuka atau terpasang sebagai PWA di Android.</p>
+          <div class="row gap wrap">
+            <button class="btn primary grow" id="btn-enable-notif">Aktifkan Notifikasi</button>
+            <button class="btn ghost grow" id="btn-test-notif">Uji Notifikasi</button>
+          </div>
+        </div>
+
+        <form id="schedule-form" class="card">
+          <div class="card-head"><h2>Tambah Jadwal</h2></div>
+          <label>Label
+            <input id="schedule-label" placeholder="cth: Sarapan" maxlength="40" required>
+          </label>
+          <div class="form-grid">
+            <label>Waktu
+              <input id="schedule-time" type="time" required>
+            </label>
+            <label>Tipe
+              <select id="schedule-type">
+                <option value="makan">🍽️ Makan</option>
+                <option value="olahraga">🏃 Olahraga</option>
+                <option value="minum_air">💧 Minum air</option>
+                <option value="tidur">😴 Tidur</option>
+                <option value="lainnya">📌 Lainnya</option>
+              </select>
+            </label>
+          </div>
+          <button class="btn primary wide" type="submit">Tambah Jadwal</button>
+        </form>
+
+        <div class="card">
+          <div class="card-head">
+            <h2>Daftar Jadwal</h2>
+            <span class="pill" id="schedule-count">0</span>
+          </div>
+          <ul id="schedule-list" class="schedule-list"></ul>
+          <p class="hint">Catatan: browser membatasi notifikasi latar belakang. Untuk alarm yang tetap berbunyi saat aplikasi ditutup, lihat panduan FCM di README.</p>
+        </div>
+      </section>
+
+      <!-- ===== Profil ===== -->
+      <section id="screen-profile" class="screen">
+        <form id="profile-form" class="card">
+          <div class="card-head"><h2>Profil &amp; Target</h2></div>
+          <label>Nama
+            <input id="profile-name" placeholder="Nama kamu" maxlength="40">
+          </label>
+          <div class="form-grid">
+            <label>Umur
+              <input id="profile-age" type="number" min="10" max="100">
+            </label>
+            <label>Jenis kelamin
+              <select id="profile-gender">
+                <option value="pria">Pria</option>
+                <option value="wanita">Wanita</option>
+              </select>
+            </label>
+            <label>Tinggi (cm)
+              <input id="profile-height" type="number" min="100" max="250">
+            </label>
+            <label>Berat (kg)
+              <input id="profile-weight" type="number" min="25" max="300" step="0.1">
+            </label>
+          </div>
+          <label>Target kalori harian (kkal)
+            <input id="profile-target" type="number" min="800" max="6000">
+          </label>
+          <div class="row gap">
+            <button type="button" class="btn ghost grow" id="btn-auto-target">Hitung otomatis</button>
+            <button type="submit" class="btn primary grow">Simpan Profil</button>
+          </div>
+          <p class="hint" id="bmr-note"></p>
+        </form>
+
+        <div class="card">
+          <div class="card-head">
+            <h2>Data &amp; Aplikasi</h2>
+            <span class="pill" id="store-mode-pill">Lokal</span>
+          </div>
+          <div class="row gap wrap">
+            <button class="btn ghost" id="btn-export" type="button">Ekspor Data (JSON)</button>
+            <button class="btn danger hidden" id="btn-reset" type="button">Reset Data Lokal</button>
+            <button class="btn ghost hidden" id="btn-logout" type="button">Keluar</button>
+          </div>
+          <p class="hint">Data disimpan di perangkat (mode demo) atau Firestore (mode Firebase). Aplikasi ini bukan pengganti nasihat medis.</p>
+        </div>
+      </section>
+
+    </main>
+
+    <nav class="bottom-nav" aria-label="Navigasi utama">
+      <button class="nav-btn active" data-nav="dashboard"><span>🏠</span>Beranda</button>
+      <button class="nav-btn" data-nav="food"><span>🍽️</span>Makan</button>
+      <button class="nav-btn" data-nav="activity"><span>🏃</span>Olahraga</button>
+      <button class="nav-btn" data-nav="schedule"><span>⏰</span>Jadwal</button>
+      <button class="nav-btn" data-nav="profile"><span>👤</span>Profil</button>
+    </nav>
+  </div>
+
+  <!-- ===== Modal ===== -->
+  <div id="modal-root" class="modal-root hidden">
+    <div class="modal-backdrop" data-close-modal></div>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <div class="modal-head">
+        <h3 id="modal-title">Judul</h3>
+        <button class="icon-btn" type="button" data-close-modal aria-label="Tutup">✕</button>
+      </div>
+      <div id="modal-body"></div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+
+  <script type="module" src="js/app.js?v=10"></script>
+</body>
+</html>

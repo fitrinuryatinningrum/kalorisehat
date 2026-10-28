@@ -1,0 +1,22 @@
+name = "kalorisehat-ai"
+main = "index.js"
+compatibility_date = "2025-01-01"
+
+[vars]
+GEMINI_MODEL = "gemini-3.8-flash"
+WORKERS_AI_MODEL = "@cf/mistralai/mistral-small-3.1-24b-instruct"
+DEFAULT_TIMEZONE = "Asia/Jakarta"
+APP_URL = "https://kalorisehat-49166.web.app"
+FIREBASE_PROJECT_ID = "kalorisehat-49166"
+FIREBASE_API_KEY = "AIzaSyBpxB_NIJWzalgN8oLJIAzsOBvAQm_CDJM"
+ALLOWED_ORIGIN = "https://kalorisehat-49166.web.app"
+AI_DAILY_LIMIT = "30"
+
+# Fallback AI gratis dari Cloudflare Workers AI (10.000 Neuron/hari).
+[ai]
+binding = "AI"
+
+# Cron setiap menit untuk mengecek jadwal pengguna dan mengirim FCM.
+# Butuh secret FIREBASE_SERVICE_ACCOUNT_B64 (lihat README).
+[triggers]
+crons = ["* * * * *"]

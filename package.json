@@ -1,0 +1,15 @@
+{
+  "name": "kalorisehat",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Aplikasi web (PWA) monitoring kalori harian dengan bantuan AI.",
+  "type": "module",
+  "scripts": {
+    "dev": "npx --yes serve public -l 5173",
+    "start": "npx --yes serve public -l 5173",
+    "deploy": "npx --yes firebase-tools deploy --only hosting",
+    "deploy:rules": "npx --yes firebase-tools deploy --only firestore:rules",
+    "deploy:storage-rules": "npx --yes firebase-tools deploy --only storage",
+    "deploy:worker": "cd worker && npx --yes wrangler deploy"
+  }
+}
